@@ -2,7 +2,7 @@
 
 DKIM cryptographically signs outbound messages. The receiver fetches the public key from DNS and verifies the signature. Unlike SPF, DKIM survives forwarding — the signature stays intact even when the message is relayed.
 
-DKIM is published per **selector**. A domain can have many selectors (one per sender, one per rotation, etc.).
+DKIM is published per **selector**. A domain can have many selectors (one per sender, one per rotation, etc.). DKIM is also the only path to DMARC alignment when sending through an ESP — see [DMARC alignment](./dmarc.md#alignment-the-part-that-actually-matters).
 
 ## Lookup
 
@@ -78,7 +78,9 @@ for sel in google selector1 selector2 s1 s2 k1 k2 k3 pm mail klaviyo; do
 done
 ```
 
-When SendGrid / Mailchimp / etc. publish their DKIM as **CNAMEs**, `dig TXT` still resolves through and returns the TXT at the destination — but the user's DNS panel will show a CNAME row, not a TXT row. Don't tell them to "look for a TXT" if the ESP gave them CNAMEs.
+For a script that runs the same probe loop with ESP-tuned selectors and prints a verdict, use `scripts/audit.sh <domain> <esp>` from the skill root.
+
+When SendGrid / Mailchimp / etc. publish their DKIM as **CNAMEs**, `dig TXT` still resolves through and returns the TXT at the destination — but the user's DNS panel will show a CNAME row, not a TXT row. Use "look for a CNAME" wording when the ESP delivers CNAMEs.
 
 ## Verdict logic for the audit
 
@@ -115,7 +117,7 @@ Never reuse a selector name with a new key — receivers may have it cached and 
 
 ## Common gotchas
 
-- **Forgetting subdomain DKIM.** If you send from `mail.example.com`, the selector lookup is `s1._domainkey.mail.example.com`, not `s1._domainkey.example.com`.
-- **TXT length splitting.** 2048-bit keys exceed the 255-char TXT string limit. DNS allows concatenating multiple strings inside one TXT record — make sure your provider supports the syntax (most do; some require explicit quoting).
-- **CNAME chains.** SendGrid / Mailchimp use CNAMEs so they can rotate keys without user action. Don't replace those CNAMEs with literal TXT — you'll freeze the key.
+- **Forgetting subdomain DKIM.** Mail from `mail.example.com` resolves to `s1._domainkey.mail.example.com`, not `s1._domainkey.example.com`.
+- **TXT length splitting.** 2048-bit keys exceed the 255-char TXT string limit. DNS allows concatenating multiple strings inside one TXT record — confirm the DNS provider supports the syntax (most do; some require explicit quoting).
+- **CNAME chains.** SendGrid / Mailchimp use CNAMEs so they can rotate keys without user action. Replacing those CNAMEs with literal TXT freezes the key — leave the CNAME alone.
 - **Selector visible in headers.** The selector name is in every email's `DKIM-Signature: s=...` header. Don't name selectors with anything sensitive.

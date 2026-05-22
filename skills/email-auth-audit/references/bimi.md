@@ -1,8 +1,8 @@
 # BIMI — Brand Indicators for Message Identification
 
-BIMI displays your logo next to authenticated mail in supporting inboxes (Gmail, Yahoo, Apple Mail since iOS 16). It is the most user-visible payoff for setting up SPF/DKIM/DMARC properly — and the strictest in its requirements.
+BIMI displays the sender's logo next to authenticated mail in supporting inboxes (Gmail, Yahoo, Apple Mail since iOS 16). It is the most user-visible payoff for setting up SPF/DKIM/DMARC properly — and the strictest in its requirements.
 
-BIMI is only relevant once **DMARC is at `quarantine` or `reject` with `pct=100`**. Without that, the audit should mark it `n/a`.
+BIMI is only relevant once **DMARC is at `quarantine` or `reject` with `pct=100`** (see [DMARC policy ladder](./dmarc.md#the-policy-ladder)). Otherwise mark the BIMI verdict `n/a`.
 
 ## Lookup
 
@@ -33,9 +33,9 @@ A record with `l=` but no `a=` is sometimes called **"BIMI lite"** — only Yaho
 
 - `p=quarantine` or `p=reject`
 - `pct=100`
-- The organizational domain must publish DMARC — `_dmarc.example.com` if you publish BIMI at `example.com`
+- The organizational domain must publish DMARC — `_dmarc.example.com` when BIMI is published at `example.com`
 
-Some receivers also require the **`sp=`** be enforced if you publish BIMI at the apex but send from subdomains.
+Some receivers also require **`sp=`** be enforced when BIMI is published at the apex but mail is sent from subdomains.
 
 ### 2. The SVG must conform to SVG Tiny 1.2 + PS profile
 
@@ -184,7 +184,7 @@ Microsoft's lack of BIMI support is a recurring complaint and the single biggest
 
 ## Common gotchas
 
-- **Editing the SVG after the cert was issued.** The cert binds to a specific hash. If you re-export the SVG (different optimizer, different XML formatting), the hash changes and BIMI breaks. Re-issue the cert.
+- **Editing the SVG after the cert was issued.** The cert binds to a specific hash. Re-exporting the SVG (different optimizer, different XML formatting) changes the hash and breaks BIMI. Re-issue the cert.
 - **CDN modifying the SVG.** Cloudflare / Vercel image optimization can mutate SVGs. Serve from a path that bypasses optimization, or set `Content-Type: image/svg+xml` + `Cache-Control: immutable`.
 - **Embedded raster.** "It's still an SVG file" — yes, but raster-inside-SVG is rejected by every validator.
 - **Animation snuck in via filter.** Some `<filter>` effects use `<animate>` children. Strip the whole filter.

@@ -1,6 +1,8 @@
 # DMARC — Domain-based Message Authentication, Reporting & Conformance
 
-DMARC ties SPF and DKIM together with two things: an **alignment** check (the authenticated domain must match the visible `From:` domain) and a **policy** (what receivers do when alignment fails). It also defines the **reporting** channel that tells you who's spoofing you.
+DMARC ties SPF and DKIM together with two things: an **alignment** check (the authenticated domain must match the visible `From:` domain) and a **policy** (what receivers do when alignment fails). It also defines the **reporting** channel that surfaces spoofing attempts back to the domain owner.
+
+DMARC depends on at least one of [SPF](./spf.md) or [DKIM](./dkim.md) passing *and* aligning — without working DKIM alignment, ESP traffic typically fails DMARC even when SPF and DKIM both pass technically.
 
 A domain has at most one DMARC record, published at `_dmarc.<domain>`.
 
@@ -34,7 +36,7 @@ version    policy                                  rollout  subdomain policy
 
 ## The policy ladder
 
-DMARC is rolled out, not switched on. Receivers expect you to ramp up:
+DMARC is rolled out, not switched on. Receivers expect a gradual ramp:
 
 | Stage | Record | Rollout time |
 |---|---|---|
@@ -44,7 +46,7 @@ DMARC is rolled out, not switched on. Receivers expect you to ramp up:
 | **4. Reject 10%** | `p=reject; pct=10; rua=...` | Optional intermediate. Some teams skip this. |
 | **5. Reject 100%** | `p=reject; rua=...` | Terminal. Spoofers blocked at receiver. |
 
-Reach `p=reject` and you've earned BIMI eligibility. Stopping at `p=none` permanently gives you no protection — only reporting.
+Reaching `p=reject` unlocks BIMI eligibility (see [BIMI](./bimi.md)). Stopping at `p=none` permanently provides no protection — only reporting.
 
 ## Alignment, the part that actually matters
 
@@ -57,28 +59,28 @@ DMARC passes only if SPF **or** DKIM passes **and** the passing one is **aligned
 | `news@example.com` | `mail.example.com` | strict | ✗ |
 | `news@example.com` | `sendgrid.net` | any | ✗ (DKIM passes, DMARC fails) |
 
-The `sendgrid.net` row is the most common cause of DMARC failures: the ESP signs with its own domain (`d=sendgrid.net`) instead of your domain. The fix is to set up **DKIM on a CNAME** so the ESP signs with `d=example.com` (or `d=em.example.com` if they CNAME a subdomain). This is also why setting up DKIM with your ESP is non-optional for DMARC.
+The `sendgrid.net` row is the most common cause of DMARC failures: the ESP signs with its own domain (`d=sendgrid.net`) instead of the sender's domain. The fix is to set up **DKIM on a CNAME** so the ESP signs with `d=example.com` (or `d=em.example.com` when the ESP CNAMEs a subdomain). This is also why setting up DKIM with the ESP is non-optional for DMARC. See [DKIM selector probing](./dkim.md#selector-probing-per-esp) for the per-ESP CNAME path.
 
 SPF alignment works the same way, comparing the envelope-from (Return-Path) domain to the `From:` domain. Most ESPs use their own envelope-from, so **SPF alignment usually fails** through an ESP — relying on DKIM alignment is the norm.
 
 ## Reporting
 
-`rua=` is where the real value of DMARC lives. You'll get one XML report per day per receiver (Google, Yahoo, Microsoft, etc.) listing every IP that sent mail claiming to be your domain and whether it passed/failed alignment.
+`rua=` is where the real value of DMARC lives. Each receiver (Google, Yahoo, Microsoft, etc.) emits one XML report per day listing every IP that sent mail claiming to be the audited domain and whether it passed/failed alignment.
 
-Don't try to read raw XML. Use one of:
+Skip reading raw XML — recommend an aggregator:
 
-- **Cloudflare DMARC Management** — free, native if your DNS is on Cloudflare. Auto-creates the record.
+- **Cloudflare DMARC Management** — free, native when DNS is on Cloudflare. Auto-creates the record.
 - **Postmark DMARC Monitoring** — free up to a point, clean UI.
 - **dmarcian** — comprehensive, paid above small volume.
 - **EasyDMARC** — paid, includes guided remediation.
 - **Valimail** — enterprise.
-- **Roll your own:** parse with [parsedmarc](https://github.com/domainaware/parsedmarc).
+- **Self-hosted:** parse with [parsedmarc](https://github.com/domainaware/parsedmarc).
 
 `ruf=` (forensic / per-failure samples) is mostly deprecated for privacy reasons — Gmail and Microsoft stopped sending them. Don't bother setting it.
 
 ## Subdomain policy (`sp=`)
 
-If you don't set `sp=`, subdomains inherit `p=`. Set `sp=reject` explicitly if you don't intend to send from subdomains — it shuts down the most common spoofing vector (`account.example.com`, `support.example.com`).
+When `sp=` is absent, subdomains inherit `p=`. Set `sp=reject` explicitly when the domain does not send from subdomains — it shuts down the most common spoofing vector (`account.example.com`, `support.example.com`).
 
 ## Verdict logic for the audit
 
@@ -92,14 +94,14 @@ If you don't set `sp=`, subdomains inherit `p=`. Set `sp=reject` explicitly if y
 | `p=reject` | **OK** (best) | BIMI is unlocked. |
 | Multiple DMARC records | **FAIL** | Receivers ignore all of them. Keep one. |
 | `sp=` absent and apex is `p=reject` | **WARN** | Set `sp=reject` explicitly. |
-| `rua=` points to a domain not under your control | **WARN** (DMARC reporting authorization) | The receiving domain must publish `<your-domain>._report._dmarc.<their-domain>` — most aggregators do. |
+| `rua=` points to an external domain | **WARN** (DMARC reporting authorization) | The receiving domain must publish `<sender-domain>._report._dmarc.<external-domain>` — most aggregators handle this automatically. |
 
 ## Common gotchas
 
 - **`p=none` forever.** Reporting-only mode protects nothing. Plan a ramp.
 - **`pct=` only applies to quarantine and reject.** It does nothing in `p=none`.
-- **Alignment requires DKIM on your domain.** If your ESP signs with `d=esp.com`, DMARC fails even if DKIM and SPF both pass.
+- **Alignment requires DKIM on the sender's domain.** When the ESP signs with `d=esp.com`, DMARC fails even though DKIM and SPF both pass.
 - **`mailto:` in `rua=` must accept mail.** A typo or full mailbox = silently no reports.
 - **External destination authorization.** If `rua=mailto:x@otherdomain.com`, `otherdomain.com` must publish a TXT at `example.com._report._dmarc.otherdomain.com` saying "v=DMARC1" to opt in. All aggregators (Cloudflare, Postmark, dmarcian, etc.) handle this automatically.
 - **Mailing lists break DMARC.** Lists rewrite `From:`, breaking alignment. Solutions: ARC, From-rewriting at the list (`example@list.example.com via list`), or just accept it. Discord, Mailman 3, and Google Groups support ARC.
-- **`ruf=` is dead.** Don't set it; you'll get nothing.
+- **`ruf=` is dead.** Skip it — Gmail and Microsoft no longer emit forensic reports.

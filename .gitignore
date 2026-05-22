@@ -5,3 +5,7 @@ node_modules/
 *.log
 .idea/
 .vscode/
+
+# Local install state from `npx skills`
+.agents/
+skills-lock.json

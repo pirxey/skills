@@ -25,6 +25,9 @@ Part of the **[pirxey/skills](https://github.com/pirxey/skills)** collection.
 ```
 email-auth-audit/
 ├── SKILL.md                          # Start here — router with Quick Reference table
+├── scripts/
+│   ├── audit.sh                      # Phase 1 runner: SPF + DKIM probe + DMARC + BIMI
+│   └── bimi-validate.sh              # Deep BIMI validation (SVG + VMC/CMC)
 └── references/
     ├── spf.md                        # SPF anatomy, 10-lookup limit, ESP includes
     ├── dkim.md                       # DKIM, ESP selector table, probing, rotation
@@ -101,6 +104,7 @@ Standard tools found on most systems:
 - `curl` — fetch SVG / PEM assets
 - `shasum` / `sha256sum` — logo-hash binding verification
 - `xmllint` *(optional)* — SVG structural validation
+- `bash` 4+ — for the bundled `scripts/*.sh` helpers
 
 ## Example Output
 
@@ -110,7 +114,7 @@ Domain: example.com
   SPF      OK     v=spf1 include:sendgrid.net ~all
   DKIM     OK     s1, s2 selectors found (SendGrid, 2048-bit)
   DMARC    WARN   p=none, no rua= reporting address
-  BIMI     FAIL   SVG OK, but VMC certificate expired (notAfter: 2025-11-12)
+  BIMI     FAIL   SVG OK, but VMC certificate expired (notAfter: 2025-11-12 — sample expired cert)
 
 Recommended next actions:
   1. Add rua=mailto:dmarc@example.com to _dmarc record (or enable Cloudflare DMARC Management).
@@ -118,6 +122,8 @@ Recommended next actions:
 
 Want me to walk you through these step-by-step?
 ```
+
+*The `notAfter: 2025-11-12` date above is a deliberately expired example to illustrate the FAIL line — real audits produce live dates from the served certificate.*
 
 ## About the maintainer
 

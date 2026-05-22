@@ -1,16 +1,16 @@
 # Phase 2 — Interactive Remediation
 
-Once the audit (Phase 1) ends, you have a verdict table and a list of broken records. Phase 2 is where you walk the user through fixing them — **one DNS change at a time**.
+Once the audit (Phase 1) ends, the verdict table lists the broken records. Phase 2 walks the user through fixing them — **one DNS change at a time**.
 
-The aim is "hand-holding without lecturing." Give them exact values, wait for them to apply, verify with `dig`, move on.
+The aim is "hand-holding without lecturing." Provide exact values, wait for the user to apply each change, verify with `dig`, move on.
 
 ## Core rules
 
 1. **One record at a time.** Never dump three TXT changes at once. The user will mis-paste at least one.
 2. **Exact values.** Always give Type / Name / Value formatted for their DNS panel. No "something like…".
-3. **Ask for the provider first** if you don't know it. Cloudflare / GoDaddy / Route53 / Azure have very different UIs and conventions ([dns-providers.md](./dns-providers.md)).
-4. **Verify each change before moving on.** Re-run `dig` against `@1.1.1.1` and `@8.8.8.8`. If the user's NS hasn't propagated, query their authoritative NS directly: `dig +short TXT _dmarc.example.com @ns1.theirprovider.com`.
-5. **Don't say "now wait 24–48 hours for propagation."** That's outdated advice. Most public resolvers see the change within minutes if TTL is sensible. If propagation is genuinely slow, query the authoritative NS, not the resolver.
+3. **Ask for the DNS provider first** when unknown. Cloudflare / GoDaddy / Route53 / Azure have very different UIs and conventions ([dns-providers.md](./dns-providers.md)).
+4. **Verify each change before moving on.** Re-run `dig` against `@1.1.1.1` and `@8.8.8.8`. When the public resolver lags, query the authoritative NS directly: `dig +short TXT _dmarc.example.com @ns1.theirprovider.com`.
+5. **Skip the "wait 24–48 hours for propagation" line.** That's outdated. Most public resolvers see the change within minutes when TTL is sensible. When propagation is genuinely slow, query the authoritative NS, not the resolver.
 
 ## Order of operations
 
@@ -40,7 +40,7 @@ After they confirm:
 dig +short TXT example.com @1.1.1.1
 ```
 
-Confirm exactly one `v=spf1` line, the includes you expect, and `~all`.
+Confirm exactly one `v=spf1` line, the expected includes, and `~all`.
 
 ### DKIM
 
@@ -67,7 +67,7 @@ Verify with:
 dig +short TXT s1._domainkey.example.com @1.1.1.1
 ```
 
-You should see the public key. If it's still the CNAME without resolution, the user pasted the value wrong.
+The output should be the public key. When `dig` still returns the literal CNAME unresolved, the user pasted the value wrong.
 
 ### DMARC (start at none)
 
@@ -78,7 +78,7 @@ Value: v=DMARC1; p=none; rua=mailto:dmarc-reports@example.com; sp=none; adkim=r;
 TTL:   3600
 ```
 
-Tell the user to:
+Instruct the user to:
 
 1. Set up an inbox or use a free aggregator (Cloudflare, Postmark) for the `rua=` address.
 2. Wait 1–2 weeks. Read reports. Identify legitimate senders failing alignment.
@@ -110,11 +110,11 @@ Then upload the SVG and the VMC PEM at those URLs over HTTPS. Verify with [bimic
 
 ### Cloudflare DMARC shortcut
 
-If their DNS is on Cloudflare, **don't ask them to add a DMARC TXT manually**. Tell them:
+When the user's DNS is on Cloudflare, **skip the manual DMARC TXT entirely**. Tell them:
 
-> Cloudflare has a free native DMARC tool. In your Cloudflare dashboard, go to **Email → DMARC Management** and click **Enable DMARC Management**. This auto-creates the `_dmarc` record at `p=none` and sets `rua=` to Cloudflare's free analytics ingestion. You can view reports in the same panel.
+> Cloudflare has a free native DMARC tool. In the Cloudflare dashboard, go to **Email → DMARC Management** and click **Enable DMARC Management**. This auto-creates the `_dmarc` record at `p=none` and sets `rua=` to Cloudflare's free analytics ingestion. Reports show in the same panel.
 
-Then verify the record appeared. To ramp policy later, edit it in the same panel — Cloudflare lets them flip `none → quarantine → reject` from a dropdown.
+Then verify the record appeared. To ramp policy later, edit it in the same panel — Cloudflare allows flipping `none → quarantine → reject` from a dropdown.
 
 ### Provider value-field conventions
 

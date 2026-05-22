@@ -1,6 +1,6 @@
 # SPF — Sender Policy Framework
 
-SPF tells receiving mail servers which IPs are authorized to send mail "from" your domain. It is a single DNS TXT record on the apex domain (or on each sending subdomain).
+SPF tells receiving mail servers which IPs are authorized to send mail "from" the audited domain. It is a single DNS TXT record on the apex domain (or on each sending subdomain).
 
 ## Lookup
 
@@ -8,7 +8,9 @@ SPF tells receiving mail servers which IPs are authorized to send mail "from" yo
 dig +short TXT example.com @1.1.1.1
 ```
 
-You're looking for one line starting with `v=spf1`. If you see two SPF records, that's a hard fail at most receivers — they must be merged into one.
+Look for one line starting with `v=spf1`. Two SPF records on the same name = hard fail at most receivers — they must be merged into one.
+
+Alignment between the SPF envelope-from domain and the visible `From:` header is what DMARC actually grades — see [DMARC](./dmarc.md#alignment-the-part-that-actually-matters) for how the two interact.
 
 ## Record anatomy
 
@@ -30,13 +32,13 @@ version                                                                qualifier
 | `~all` | **SoftFail** — preferred. Message is accepted but marked. |
 | `-all` | **Fail** — receivers should reject unauthorized senders. Strict. |
 | `?all` | Neutral — equivalent to no policy. Avoid. |
-| `+all` | Pass everything. **Never use this** — anyone can spoof you. |
+| `+all` | Pass everything. **Never use this** — anyone can spoof the domain. |
 
 ## The 10-lookup limit (RFC 7208)
 
 SPF allows **at most 10 DNS lookups** during evaluation. Exceeding it returns `PermError` and receivers treat the domain as if SPF were absent. Lookups count for: `include`, `a`, `mx`, `exists`, `redirect`, and any `ptr` (deprecated).
 
-`ip4` / `ip6` do **not** count. Use them when you can flatten an `include` to bare IPs.
+`ip4` / `ip6` do **not** count. Use them to flatten an `include` to bare IPs when possible.
 
 ### Counting lookups
 
@@ -48,18 +50,18 @@ v=spf1 include:_spf.google.com include:mailgun.org include:sendgrid.net ~all
                                                           = 8 total
 ```
 
-Add `mx` (1) + a subdomain `include` and you're at the ceiling.
+Add `mx` (1) + a subdomain `include` and the record hits the ceiling.
 
 ### Tools to count
 
 - Online: [mxtoolbox.com/SuperTool.aspx?action=spf](https://mxtoolbox.com/SuperTool.aspx?action=spf)
 - CLI: `spfquery` (libspf2), `pyspf-milter`, `checkdmarc` (Python)
 
-### When you exceed 10
+### When the record exceeds 10 lookups
 
 1. **Flatten** — replace `include:` with bare `ip4:` ranges. Use a tool that auto-updates them (Cloudflare, EasyDMARC SPF Flattener), since IPs change.
 2. **Move** senders off the apex onto subdomains with their own SPF (e.g. `marketing.example.com` for the ESP).
-3. **Drop** ESPs you don't actually use. Audit every `include:`.
+3. **Drop** unused ESPs. Audit every `include:`.
 
 ## ESP include strings
 
@@ -81,7 +83,7 @@ Add `mx` (1) + a subdomain `include` and you're at the ceiling.
 | Intercom | `include:_spf.intercom.io` |
 | Salesforce Marketing Cloud | `include:_spf.salesforce.com` (varies by tenant) |
 
-If your sender isn't here, check their docs for the current include string — they change.
+If the user's sender is not listed, check the ESP's docs for the current include string — they change.
 
 ## Verdict logic for the audit
 
@@ -102,4 +104,4 @@ If your sender isn't here, check their docs for the current include string — t
 - **Two records.** Especially common after migrating ESPs — leftover record from the old provider stays. Delete it.
 - **SPF on subdomains.** SPF is per-domain. `mail.example.com` needs its own SPF — `example.com`'s SPF doesn't cover it.
 - **Bare `ptr`.** Deprecated. Slow. Some receivers ignore it. Remove.
-- **SPF doesn't survive forwarding.** A receiver forwarding your message rewrites the envelope sender, breaking SPF. This is why DKIM + DMARC matter — they survive forwards.
+- **SPF doesn't survive forwarding.** A receiver forwarding the message rewrites the envelope sender, breaking SPF. This is why DKIM + DMARC matter — they survive forwards.

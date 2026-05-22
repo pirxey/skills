@@ -2,7 +2,7 @@
 
 The records are the same everywhere; the panels are not. This is per-provider guidance for the remediation walk-through.
 
-Ask the user *"What service manages your DNS?"* before reciting any of this. If they don't know, run `dig +short NS example.com @1.1.1.1` — the answer tells you (`ns1.cloudflare.com`, `ns-XXX.awsdns-XX.com` = Route53, `ns1.domaincontrol.com` = GoDaddy, etc.).
+Ask the user *"What service manages your DNS?"* before reciting any of this. When the user does not know, run `dig +short NS example.com @1.1.1.1` — the answer identifies the provider (`ns1.cloudflare.com`, `ns-XXX.awsdns-XX.com` = Route53, `ns1.domaincontrol.com` = GoDaddy, etc.).
 
 ## Cloudflare
 
@@ -59,7 +59,7 @@ aws route53 change-resource-record-sets --hosted-zone-id Z123 --change-batch fil
 **Quirks:**
 
 - Long TXT (2048-bit DKIM): GoDaddy's UI accepts the full string but their backend used to split it incorrectly. As of 2024 this is fixed, but if a DKIM lookup returns garbled output, recreate the record.
-- **Cannot add two records with the same name and type** through the UI — for SPF this is right (you should have one anyway), but for some legacy migration scenarios this trips people up.
+- **Cannot add two records with the same name and type** through the UI — correct behavior for SPF (one record only), but legacy migration scenarios sometimes need an interim duplicate and the UI refuses.
 - DMARC reporting: works, but no native dashboard. Use an external aggregator for `rua=`.
 
 ## Azure DNS
@@ -127,7 +127,7 @@ aws route53 change-resource-record-sets --hosted-zone-id Z123 --change-batch fil
 
 - Apex: leave subdomain field blank.
 - Subdomain: just the prefix (`s1._domainkey`).
-- Quotes on TXT values: OVH adds them automatically — **don't paste them** or you'll get double-quoted values.
+- Quotes on TXT values: OVH adds them automatically — **paste raw**, otherwise the value ends up double-quoted.
 
 ## Hover / Tucows
 

@@ -36,7 +36,7 @@ skills/
 ```markdown
 ---
 name: {skill-name}
-description: {One paragraph. Lead with what the skill does, then list trigger phrases the agent should activate on. Be specific — vague descriptions hurt discovery.}
+description: This skill should be used when the user asks to "{trigger phrase 1}", "{trigger phrase 2}", or {scenario}. {One sentence on what the skill does and what it produces.}
 license: MIT
 metadata:
   author: Pirxey
@@ -47,7 +47,7 @@ metadata:
 
 # {Skill Title}
 
-{Short intro: what you do, how you behave, what you produce.}
+{Short intro in imperative form: what to do, how to behave, what to produce. No second-person — write "Act as X" not "You are X".}
 
 ## Workflow / Architecture
 
@@ -59,6 +59,10 @@ metadata:
 |---|---|
 | {use case} | [{topic}](./references/{topic}.md) |
 
+## Resources
+
+{When the skill bundles `scripts/`, list them here with one-line summaries and the exact invocation. Reference `references/` files implicitly via the Quick Reference table.}
+
 ## Start Here
 
 {Per-use-case routing — "User says X → do Y".}
@@ -67,22 +71,24 @@ metadata:
 
 ## {Phase 1 / Procedure}
 
-{Main inline content. Push depth into references/.}
+{Main inline content in imperative form. Push depth into references/.}
 ```
 
 ### Description Guidance
 
 The `description` is what skills.sh, the CLI search, and agents see at discovery time. It must:
 
-- **Lead with what the skill does** (not how)
-- **List trigger phrases** — exact words the agent should activate on
+- **Open with "This skill should be used when…"** in third person, followed by quoted trigger phrases (`"check SPF/DKIM"`, `"audit X"`)
+- **Mention what the skill produces** after the triggers, so the agent can rank it
 - **Stay under ~700 chars** — anything longer gets truncated in some UIs
 
 Good example:
-> Audit a domain's email authentication setup — SPF, DKIM, DMARC, and BIMI. Use when the user asks to check, audit, verify, debug, or set up SPF/DKIM/DMARC/BIMI, asks "why do my emails go to spam", or names an ESP like SendGrid, Amazon SES, Mailgun, or Postmark together with a domain.
+> This skill should be used when the user asks to "audit email authentication", "check SPF/DKIM/DMARC", "verify BIMI", "validate VMC/CMC certificate", "set up DKIM for SendGrid/SES/Mailgun/Postmark", asks "why do my emails go to spam", or names any ESP together with a domain. Audits SPF, DKIM, DMARC, and BIMI step by step and produces a verdict table plus an interactive remediation walkthrough.
 
-Bad example:
+Bad examples:
 > Email skill for various deliverability tasks.
+
+> Use this skill when you want to audit email — checks SPF, DKIM, DMARC.  (wrong person, no quoted triggers)
 
 ### Progressive Disclosure
 
@@ -130,9 +136,14 @@ npx skills add pirxey/skills --skill {skill-name} -g
 
 ## House Style
 
+This repo follows Anthropic's [skill-development](https://github.com/anthropics/claude-code/tree/main/plugins/plugin-dev/skills/skill-development) conventions:
+
+- **Description in third person**, starting with `This skill should be used when…` and listing quoted trigger phrases.
+- **Body in imperative form** — write `Run dig`, `Check the record`, `Probe selectors`. Never `You should run dig` or `You'll see…`. The only place second person is allowed is verbatim quotes the agent says to the user.
 - **No marketing-speak in SKILL.md.** It runs at agent-discovery time and the agent ranks it against other skills — exaggeration costs activation accuracy.
 - **Marketing belongs in README.md**, where humans read.
 - **Each reference file is one topic.** Don't make `everything-else.md`.
+- **Bundle scripts for repeated commands.** When the SKILL.md procedure would have the agent re-issue the same `dig` / `curl` / `openssl` loop on every run, factor it into `scripts/<name>.sh` and reference the invocation from SKILL.md. Scripts run without consuming context.
 - **Code blocks are tested.** If you include a `dig` / `openssl` / `curl` snippet, it should run as-is.
 
 ## Need help building a skill?
