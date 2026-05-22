@@ -1,0 +1,13 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Email Authentication & Deliverability",
+      "description": "Skills for setting up, auditing, and maintaining email authentication (SPF, DKIM, DMARC, BIMI) and inbox-placement health.",
+      "skills": [
+        "email-auth-audit"
+      ]
+    }
+  ]
+}
