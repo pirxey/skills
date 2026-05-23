@@ -78,23 +78,14 @@ See all options: `npx skills add --help`.
 
 ```
 pirxey/skills/
-├── README.md                                # This file
-├── AGENTS.md                                # Cross-agent contributor notes
-├── skills.sh.json                           # Groupings for skills.sh listing
+├── README.md            # This file
+├── AGENTS.md            # Cross-agent contributor notes
+├── skills.sh.json       # Groupings for the skills.sh listing
 └── skills/
-    └── email-auth-audit/
-        ├── SKILL.md                         # Skill entry point (router)
-        ├── README.md                        # Skill-level docs
-        └── references/                      # Progressive-disclosure deep dives
-            ├── spf.md
-            ├── dkim.md
-            ├── dmarc.md
-            ├── bimi.md
-            ├── remediation.md
-            └── dns-providers.md
+    └── <skill-name>/    # One directory per skill — see each skill's own README
 ```
 
-Each skill follows [progressive disclosure](https://agentskills.io/specification#progressive-disclosure): your agent loads only the skill's `SKILL.md` at discovery, then pulls in a reference file on demand when a check or remediation step needs it.
+Each skill follows [progressive disclosure](https://agentskills.io/specification#progressive-disclosure): the agent loads only the skill's `SKILL.md` at discovery, then pulls in a reference file on demand when a check or remediation step needs it.
 
 ## About Pirxey
 
